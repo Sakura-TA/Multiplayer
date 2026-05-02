@@ -616,6 +616,17 @@ static class IsActiveThreatToAnyPlayer
     }
 }
 
+[HarmonyPatch(typeof(JobDriver_TakeToBed), nameof(JobDriver_TakeToBed.CheckMakeTakeeGuest))]
+[HarmonyPatch(typeof(JobDriver_CarryDownedPawn), nameof(JobDriver_CarryDownedPawn.CheckMakeTakeeGuest))]
+static class TakeToBedGuestFactionPatch
+{
+    static bool Prefix(JobDriver __instance)
+    {
+        var takee = __instance.job.GetTarget(TargetIndex.A).Pawn;
+        return takee?.Faction?.IsPlayer != true && takee?.HostFaction?.IsPlayer != true;
+    }
+}
+
 [HarmonyPatch(typeof(LetterStack), nameof(LetterStack.ReceiveLetter), typeof(Letter), typeof(string), typeof(int), typeof(bool))]
 static class LetterStackReceiveOnlyMyFaction
 {
@@ -761,7 +772,7 @@ static class CompShuttle_ContainedColonistCount_Patch
             yield return ci;
         }
     }
-    static bool IsFreeColonistAnyPlayerFaction(Pawn pawn)
+    public static bool IsFreeColonistAnyPlayerFaction(Pawn pawn)
     {
         if (Multiplayer.Client == null || !Multiplayer.GameComp.multifaction)
             return pawn.IsFreeColonist;
@@ -816,5 +827,25 @@ static class PlaceGravship_FactionContext_Patch
     {
         if (!__state) return;
         map.PopFaction();
+    }
+}
+
+[HarmonyPatch(typeof(QuestPart_LendColonistsToFaction), "Enable")]
+static class QuestPart_LendColonistsToFaction_Enable_Patch
+{
+    static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> insts)
+    {
+        var isFreeColonist = AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.IsFreeColonist));
+        var replacement = AccessTools.Method(typeof(CompShuttle_ContainedColonistCount_Patch),
+            nameof(CompShuttle_ContainedColonistCount_Patch.IsFreeColonistAnyPlayerFaction));
+        foreach (var ci in insts)
+        {
+            if (ci.Calls(isFreeColonist))
+            {
+                ci.opcode = OpCodes.Call;
+                ci.operand = replacement;
+            }
+            yield return ci;
+        }
     }
 }

@@ -9,22 +9,17 @@ using Verse;
 
 namespace Multiplayer.Client
 {
-
     [PacketHandlerClass(inheritHandlers: false)]
-    public class ClientJoiningState : ClientBaseState
+    public class ClientJoiningState(ConnectionBase connection, string username) : ClientBaseState(connection)
     {
-        public ClientJoiningState(ConnectionBase connection) : base(connection)
-        {
-        }
+        private BootstrapServerState? bootstrapState;
 
         [TypedPacketHandler]
         public new void HandleDisconnected(ServerDisconnectPacket packet) => base.HandleDisconnected(packet);
 
         [TypedPacketHandler]
-        public void HandleBootstrap(ServerBootstrapPacket packet)
-        {
-            Multiplayer.session.ApplyBootstrapState(packet);
-        }
+        public void HandleBootstrap(ServerBootstrapPacket packet) =>
+            bootstrapState = BootstrapServerState.FromPacket(packet);
 
         public override void StartState()
         {
@@ -38,14 +33,14 @@ namespace Multiplayer.Client
             if (packet.hasPassword)
             {
                 // Delay showing the window for better UX
-                OnMainThread.Schedule(() => Find.WindowStack.Add(new GamePasswordWindow
+                OnMainThread.Schedule(() => Find.WindowStack.Add(new GamePasswordWindow(username)
                 {
                     returnToServerBrowser = Find.WindowStack.WindowOfType<BaseConnectingWindow>().returnToServerBrowser
                 }), 0.3f);
             }
             else
             {
-                connection.Send(new ClientUsernamePacket(Multiplayer.username));
+                connection.Send(new ClientUsernamePacket(username));
             }
         }
 
@@ -68,8 +63,9 @@ namespace Multiplayer.Client
             {
                 modCtorRoundMode = MultiplayerData.modCtorRoundMode,
                 staticCtorRoundMode = MultiplayerData.staticCtorRoundMode,
-                defInfos = MultiplayerData.localDefInfos.Select(kv => new KeyedDefInfo
-                    { name = kv.Key, count = kv.Value.count, hash = kv.Value.hash }).ToArray()
+                defInfos = MultiplayerData.localDefInfos
+                    .Select(kv => new KeyedDefInfo { name = kv.Key, count = kv.Value.count, hash = kv.Value.hash })
+                    .ToArray()
             }.Serialize());
 
         [TypedPacketHandler]
@@ -82,7 +78,7 @@ namespace Multiplayer.Client
             {
                 remoteRwVersion = packet.rwVersion,
                 remoteMpVersion = packet.mpVersion,
-                connectionString = Multiplayer.session.connector.GetConnectionString()
+                connector = Multiplayer.session.connector
             };
 
             var defDiff = false;
@@ -126,10 +122,10 @@ namespace Multiplayer.Client
 
                 void StartDownloading()
                 {
-                    if (Multiplayer.session.bootstrapState.Enabled)
+                    if (bootstrapState is { Enabled: true } state)
                     {
                         connection.ChangeState(ConnectionStateEnum.ClientBootstrap);
-                        Find.WindowStack.Add(new BootstrapConfiguratorWindow(connection));
+                        Find.WindowStack.Add(new BootstrapConfiguratorWindow(connection, state));
                         return;
                     }
 

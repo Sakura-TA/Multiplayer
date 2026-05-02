@@ -1,3 +1,4 @@
+using System;
 using Multiplayer.Client.Util;
 using Verse;
 
@@ -12,8 +13,7 @@ namespace Multiplayer.Client
     {
         public static void TryConnectWithWindow(IConnector connector, bool returnToServerBrowser = true)
         {
-            var (conn, window) = connector.Connect();
-            conn.username = Multiplayer.username;
+            var (conn, window) = connector.Connect(Multiplayer.username);
 
             Multiplayer.session = new MultiplayerSession
             {
@@ -25,5 +25,9 @@ namespace Multiplayer.Client
             window.returnToServerBrowser = returnToServerBrowser;
             Find.WindowStack.Add(window);
         }
+
+        public static void DoubleLongEvent(Action action, string textKey) =>
+            LongEventHandler.QueueLongEvent(() =>
+                LongEventHandler.QueueLongEvent(action, textKey, false, null), textKey, false, null);
     }
 }
