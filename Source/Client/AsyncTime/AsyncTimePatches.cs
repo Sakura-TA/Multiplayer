@@ -68,6 +68,7 @@ namespace Multiplayer.Client.AsyncTime
 
         static void Finalizer(int? __state)
         {
+            if (Multiplayer.Client == null && Multiplayer.RealPlayerFaction != null) return;
             if (__state.HasValue)
             {
                 Find.TickManager.DebugSetTicksGame(__state.Value);
