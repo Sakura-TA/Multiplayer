@@ -57,12 +57,12 @@ namespace Multiplayer.Client.AsyncTime
         {
             if (Multiplayer.Client == null && Multiplayer.RealPlayerFaction != null) return;
 
+            FactionContext.Push(Multiplayer.RealPlayerFaction);
             Rand.PushState();
             Map map = __instance.FindPlayerHomeWithMinTimezone();
             if (map == null) return;
 
             __state = Find.TickManager.TicksGame;
-            FactionContext.Push(Multiplayer.RealPlayerFaction);
             Find.TickManager.DebugSetTicksGame(map.AsyncTime().mapTicks);
         }
 
@@ -71,9 +71,9 @@ namespace Multiplayer.Client.AsyncTime
             if (__state.HasValue)
             {
                 Find.TickManager.DebugSetTicksGame(__state.Value);
-                FactionContext.Pop();
             }
             Rand.PopState();
+            FactionContext.Pop();
         }
     }
 
