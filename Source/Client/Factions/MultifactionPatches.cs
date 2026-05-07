@@ -849,13 +849,9 @@ static class QuestPart_LendColonistsToFaction_Enable_Patch
         }
     }
 }
-[HarmonyPatch]
+[HarmonyPatch(typeof(Map), nameof(Map.IsPlayerHome), MethodType.Getter)]
 static class Map_IsPlayerHome_Spectator_Patch
 {
-    static MethodInfo TargetMethod()
-    {
-        return AccessTools.PropertyGetter(typeof(Map), nameof(Map.IsPlayerHome));
-    }
     static bool Prefix(Map __instance, bool __result)
     {
         if (Multiplayer.Client == null || !Multiplayer.GameComp.multifaction ||
